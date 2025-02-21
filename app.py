@@ -30,7 +30,7 @@ def register():
         telefone_cliente = json_data.get('telefoneCliente')
 
         # Define data_status como data atual (DD/MM/YYYY)
-        data_status = datetime.now().strftime("%d/%m/%Y")
+        data_status = datetime.now().strftime("%Y-%m-%d")
 
         conexao = get_connection()
         with conexao.cursor() as cursor:
@@ -232,7 +232,7 @@ def editRegistro():
             novo_data_status = atual_data_status
             if atual_status != status_pedido:
                 enviar_sms(telefone_cliente, atual_status, status_pedido)
-                novo_data_status = datetime.now().strftime("%d/%m/%Y")
+                novo_data_status = datetime.now().strftime("%Y-%m-%d")
 
             query_update = """
                 UPDATE rastreios
