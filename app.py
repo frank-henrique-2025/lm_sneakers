@@ -10,11 +10,11 @@ CORS(app)
 
 def get_connection():
     return pymysql.connect(
-        host="maglev.proxy.rlwy.net",
+        host="hinkansen.proxy.rlwy.net",
         user="root",
-        password="MzkiJeYTuxKhTqezJROGYgzMFPPtozUb",
+        password="RoQgycdIQoiPWpJGDuSAKqMriDyDbpts",
         database="railway",
-        port=19262,
+        port=42465,
         cursorclass=pymysql.cursors.DictCursor
     )
 
@@ -48,6 +48,7 @@ def register():
                     codigo_rastreio,
                     status_pedido,
                     numero_pedido,
+                    data_envio,
                     data_entrega,
                     nome_cliente,
                     telefone_cliente,
@@ -58,10 +59,11 @@ def register():
                 codigo_rastreio,
                 status,
                 numero_pedido,
+                data_status,
                 data_entrega,
                 nome_cliente,
                 telefone_cliente,
-                data_status  # <-- adicionamos aqui
+                data_status
             )
             cursor.execute(query_insert, valores)
             conexao.commit()
@@ -104,9 +106,9 @@ def get_pedido():
                     codigo_rastreio,
                     status_pedido,
                     numero_pedido,
+                    data_envio,
                     data_entrega,
                     nome_cliente,
-                    data_envio,
                     telefone_cliente,
                     data_status
                 FROM rastreios
@@ -118,6 +120,7 @@ def get_pedido():
         if resultado:
             data_entrega = str(resultado["data_entrega"]) if resultado["data_entrega"] else ""
             data_envio = str(resultado["data_envio"]) if resultado["data_envio"] else ""
+            data_status = str(resultado["data_status"]) if resultado["data_status"] else ""
 
             data_entrega_formatada = ""
             if data_entrega:
@@ -130,6 +133,12 @@ def get_pedido():
                 data_envio_formatada = formatData(data_envio)
                 if 'Error' in data_envio_formatada:
                     return jsonify({"mensagem": "Erro ao buscar pedido!", "erro": data_envio_formatada})
+
+            data_status_formatada = ""
+            if data_status:
+                data_status_formatada = formatData(data_envio)
+                if 'Error' in data_status_formatada:
+                    return jsonify({"mensagem": "Erro ao buscar pedido!", "erro": data_status_formatada})
 
             return jsonify({
                 "codigo_rastreio": resultado["codigo_rastreio"],
