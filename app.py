@@ -10,11 +10,11 @@ CORS(app)
 
 def get_connection():
     return pymysql.connect(
-        host="hinkansen.proxy.rlwy.net",
+        host="shinkansen.proxy.rlwy.net",
         user="root",
-        password="RoQgycdIQoiPWpJGDuSAKqMriDyDbpts",
+        password="wplSYcrJOPkWQrdpfBGgVSuJsOHDbDzk",
         database="railway",
-        port=42465,
+        port=53516,
         cursorclass=pymysql.cursors.DictCursor
     )
 
