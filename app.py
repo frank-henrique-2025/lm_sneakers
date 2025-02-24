@@ -244,7 +244,7 @@ def enviar_sms(telefone_cliente, atual_status, status_pedido):
         "route_type": 1,
         "arraySms": [{
             "number": telefone_cliente,
-            "message": f"LM SNEAKERS informa: O status do seu pedido foi atualizado de {atual_status} para {status_pedido}.",
+            "message": f"LM SNEAKERS informa: O status do seu pedido foi atualizado de '{atual_status}' para '{status_pedido}'.",
             "filter_value": ""
         }]
     }
