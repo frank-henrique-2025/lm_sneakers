@@ -4,17 +4,18 @@ from datetime import datetime
 import pymysql
 import requests
 import re
+from requests.auth import HTTPBasicAuth
 
 app = Flask(__name__)
 CORS(app)
 
 def get_connection():
     return pymysql.connect(
-        host="shinkansen.proxy.rlwy.net",
+        host="interchange.proxy.rlwy.net",
         user="root",
-        password="wplSYcrJOPkWQrdpfBGgVSuJsOHDbDzk",
+        password="cvKOYtBsXtDaABZDyveXjkrwaxgbWEFC",
         database="railway",
-        port=53516,
+        port=10913,
         cursorclass=pymysql.cursors.DictCursor
     )
 
@@ -22,79 +23,46 @@ def get_connection():
 def register():
     try:
         json_data = request.json
-        codigo_rastreio = json_data.get('codigoRastreio')
-        status = json_data.get('statusPedido')
-        numero_pedido = json_data.get('numeroPedido')
-        data_entrega = json_data.get('dataEntrega')
-        nome_cliente = json_data.get('nomeCliente')
-        telefone_cliente = json_data.get('telefoneCliente')
 
-        # Define data_status como data atual (DD/MM/YYYY)
-        data_status = datetime.now().strftime("%Y-%m-%d")
+        data_entrega = json_data.get('dataEntrega')
+        data_obj = datetime.strptime(data_entrega, "%Y-%m-%d")
+        data_entrega_formatada = data_obj.strftime("%d/%m/%Y")
+
+        dados = {
+            "codigo_rastreio": json_data.get('codigoRastreio'),
+            "status_pedido": json_data.get('statusPedido'),
+            "numero_pedido": json_data.get('numeroPedido'),
+            "data_envio": datetime.now().strftime("%d/%m/%Y"),
+            "data_entrega": data_entrega_formatada,
+            "nome_cliente": json_data.get('nomeCliente'),
+            "telefone_cliente": json_data.get('telefoneCliente'),
+            "data_status": datetime.now().strftime("%d/%m/%Y")
+        }
 
         conexao = get_connection()
         with conexao.cursor() as cursor:
-            # Verifica se o código de rastreio já existe
-            query_check = """SELECT codigo_rastreio FROM rastreios WHERE codigo_rastreio = %s"""
-            cursor.execute(query_check, (codigo_rastreio,))
+            query_check = "SELECT codigo_rastreio FROM rastreios WHERE codigo_rastreio = %s"
+            cursor.execute(query_check, (dados["codigo_rastreio"],))
             resultado = cursor.fetchone()
 
             if resultado:
                 return jsonify({"mensagem": "Pedido já registrado!"})
 
-            # Insere no banco incluindo a coluna data_status
-            query_insert = """
-                INSERT INTO rastreios (
-                    codigo_rastreio,
-                    status_pedido,
-                    numero_pedido,
-                    data_envio,
-                    data_entrega,
-                    nome_cliente,
-                    telefone_cliente,
-                    data_status
-                ) VALUES (%s, %s, %s, %s, %s, %s, %s)
-            """
-            valores = (
-                codigo_rastreio,
-                status,
-                numero_pedido,
-                data_status,
-                data_entrega,
-                nome_cliente,
-                telefone_cliente,
-                data_status
-            )
-            cursor.execute(query_insert, valores)
+            colunas = ", ".join(dados.keys())
+            placeholders = ", ".join(["%s"] * len(dados))
+            query_insert = f"INSERT INTO rastreios ({colunas}) VALUES ({placeholders})"
+
+            # Executa a query passando os valores
+            cursor.execute(query_insert, tuple(dados.values()))
             conexao.commit()
 
-        return jsonify({"mensagem": "Pedido registrado!", "codigo_rastreio": codigo_rastreio})
+        return jsonify({"mensagem": "Pedido registrado!", "codigo_rastreio": dados["codigo_rastreio"]})
 
     except Exception as e:
         return jsonify({"mensagem": "Erro ao registrar pedido!", "erro": f"Error: '{e}'"})
 
 @app.route('/get_pedido', methods=['POST'])
 def get_pedido():
-    def formatData(data):
-        try:
-            data_formatada = datetime.strptime(data, "%Y-%m-%d")
-            data_final = data_formatada.strftime("%d %B %Y")
-
-            meses = {
-                "January": "Janeiro", "February": "Fevereiro", "March": "Março",
-                "April": "Abril", "May": "Maio", "June": "Junho",
-                "July": "Julho", "August": "Agosto", "September": "Setembro",
-                "October": "Outubro", "November": "Novembro", "December": "Dezembro"
-            }
-
-            for en, pt in meses.items():
-                data_final = data_final.replace(en, pt)
-
-            return str(data_final)
-
-        except Exception as e:
-            return f"Error: '{e}'"
-
     try:
         codigo_rastreio = request.json.get('codigoRastreio')
 
@@ -118,35 +86,14 @@ def get_pedido():
             resultado = cursor.fetchone()
 
         if resultado:
-            data_entrega = str(resultado["data_entrega"]) if resultado["data_entrega"] else ""
-            data_envio = str(resultado["data_envio"]) if resultado["data_envio"] else ""
-            data_status = str(resultado["data_status"]) if resultado["data_status"] else ""
-
-            data_entrega_formatada = ""
-            if data_entrega:
-                data_entrega_formatada = formatData(data_entrega)
-                if 'Error' in data_entrega_formatada:
-                    return jsonify({"mensagem": "Erro ao buscar pedido!", "erro": data_entrega_formatada})
-
-            data_envio_formatada = ""
-            if data_envio:
-                data_envio_formatada = formatData(data_envio)
-                if 'Error' in data_envio_formatada:
-                    return jsonify({"mensagem": "Erro ao buscar pedido!", "erro": data_envio_formatada})
-
-            data_status_formatada = ""
-            if data_status:
-                data_status_formatada = formatData(data_envio)
-                if 'Error' in data_status_formatada:
-                    return jsonify({"mensagem": "Erro ao buscar pedido!", "erro": data_status_formatada})
 
             return jsonify({
                 "codigo_rastreio": resultado["codigo_rastreio"],
                 "status_pedido": resultado["status_pedido"],
                 "numero_pedido": resultado["numero_pedido"],
-                "data_entrega": data_entrega_formatada,
+                "data_envio": resultado["data_envio"],
+                "data_entrega": resultado["data_entrega"],
                 "nome_cliente": resultado["nome_cliente"],
-                "data_envio": data_envio_formatada,
                 "telefone_cliente": resultado["telefone_cliente"],
                 "data_status": resultado["data_status"]
             })
@@ -235,21 +182,19 @@ def editRegistro():
                 return jsonify({"mensagem": "Erro ao editar registro!", 'erro': "Código de rastreio não encontrado!"})
 
             atual_status = row['status_pedido']
-            atual_data_status = row['data_status'] if row['data_status'] else ""
+            atual_data_status = row['data_status']
 
-            # Se o status foi alterado, atualizamos a data_status para a data atual
-            novo_data_status = atual_data_status
             if atual_status != status_pedido:
                 enviar_sms(telefone_cliente, atual_status, status_pedido)
-                novo_data_status = datetime.now().strftime("%Y-%m-%d")
+                atual_data_status = datetime.now().strftime("%d/%m/%Y")
 
             query_update = """
                 UPDATE rastreios
                 SET status_pedido = %s,
                     numero_pedido = %s,
+                    data_envio = %s,
                     data_entrega = %s,
                     nome_cliente = %s,
-                    data_envio = %s,
                     telefone_cliente = %s,
                     data_status = %s
                 WHERE codigo_rastreio = %s
@@ -257,11 +202,11 @@ def editRegistro():
             valores = (
                 status_pedido,
                 numero_pedido,
+                data_envio,
                 data_entrega,
                 nome_cliente,
-                data_envio,
                 telefone_cliente,
-                novo_data_status,
+                atual_data_status,
                 codigo_rastreio
             )
             cursor.execute(query_update, valores)
